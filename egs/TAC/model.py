@@ -107,7 +107,7 @@ class FasNetTAC(nn.Module):
         feature_dim,  # dim feeded to DPRNN
         hidden_dim,  # hidden dim of DPRNN
         n_layers=4,  # layers of DPRNN + TAC
-        nspk=2,  # max number of sources
+        n_src=2,  # max number of sources
         win_len=4,  # length of analysis window for FasNet in ms
         stride=None,
         context_len=16,  # context in ms
@@ -140,7 +140,7 @@ class FasNetTAC(nn.Module):
         self.hidden_dim = hidden_dim
         self.output_dim = self.context * 2 + 1
         self.n_layers = n_layers
-        self.num_spk = nspk
+        self.n_src = n_src
 
         # waveform encoder
         self.encoder = nn.Conv1d(1, self.enc_dim, self.context * 2 + self.window, bias=False)
@@ -168,7 +168,9 @@ class FasNetTAC(nn.Module):
             )
 
         # DPRNN output layers
-        self.conv_2D = nn.Sequential(nn.PReLU(), nn.Conv2d(self.enc_dim, nspk * self.enc_dim, 1))
+        self.conv_2D = nn.Sequential(
+            nn.PReLU(), nn.Conv2d(self.enc_dim, self.n_src * self.enc_dim, 1)
+        )
         self.tanh = nn.Sequential(nn.Conv1d(self.feature_dim, self.output_dim, 1), nn.Tanh())
         self.gate = nn.Sequential(nn.Conv1d(self.feature_dim, self.output_dim, 1), nn.Sigmoid())
 
@@ -251,7 +253,7 @@ class FasNetTAC(nn.Module):
 
         # output, 2D conv to get different feats for each source
         unfolded = self.conv_2D(unfolded).reshape(
-            batch_size * n_mics * self.num_spk, self.enc_dim * self.chunk_size, n_chunks
+            batch_size * n_mics * self.n_src, self.enc_dim * self.chunk_size, n_chunks
         )
 
         # dual path processing is done we fold back
@@ -268,7 +270,7 @@ class FasNetTAC(nn.Module):
 
         # apply gating to output and scaling to -1 and 1)
         folded = self.tanh(folded) * self.gate(folded)
-        folded = folded.view(batch_size, n_mics, self.num_spk, -1, seq_length)
+        folded = folded.view(batch_size, n_mics, self.n_src, -1, seq_length)
 
         # beamforming
         # convolving with all mic context --> Filter and Sum
@@ -277,16 +279,14 @@ class FasNetTAC(nn.Module):
         all_bf_output = F.conv1d(
             all_mic_context.view(1, -1, self.context * 2 + self.window),
             folded.transpose(3, -1).contiguous().view(-1, 1, self.filter_dim),
-            groups=batch_size * n_mics * self.num_spk * seq_length,
+            groups=batch_size * n_mics * self.n_src * seq_length,
         )
-        all_bf_output = all_bf_output.view(
-            batch_size, n_mics, self.num_spk, seq_length, self.window
-        )
+        all_bf_output = all_bf_output.view(batch_size, n_mics, self.n_src, seq_length, self.window)
 
         # fold back to obtain signal
         all_bf_output = F.fold(
             all_bf_output.reshape(
-                batch_size * n_mics * self.num_spk, seq_length, self.window
+                batch_size * n_mics * self.n_src, seq_length, self.window
             ).transpose(1, -1),
             (n_samples, 1),
             kernel_size=(self.window, 1),
@@ -294,7 +294,7 @@ class FasNetTAC(nn.Module):
             stride=(self.window // 2, 1),
         )
 
-        bf_signal = all_bf_output.reshape(batch_size, n_mics, self.num_spk, n_samples)
+        bf_signal = all_bf_output.reshape(batch_size, n_mics, self.n_src, n_samples)
 
         # we sum over mics after filtering (filters will realign the phase and time shift)
         if valid_mics.max() == 0:
@@ -316,7 +316,7 @@ if __name__ == "__main__":
         feature_dim=64,
         hidden_dim=128,
         n_layers=4,
-        nspk=2,
+        n_src=2,
         win_len=4,
         context_len=16,
         sr=16000,
