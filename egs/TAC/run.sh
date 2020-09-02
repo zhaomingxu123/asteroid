@@ -4,7 +4,7 @@
 set -e
 set -o pipefail
 
-# Main storage directory.
+# Main storage directory where dataset will be stored
 storage_dir=./datasets
 
 librispeech_dir=$storage_dir/LibriSpeech #$storage_dir/LibriSpeech
@@ -60,26 +60,31 @@ if [[ $stage -le  0 ]]; then
 	  rm -rf $storage_dir/test-clean.tar.gz
 	fi
 
-	if ! test -e $storage_dir/test-clean; then
-    echo "Downloading LibriSpeech/dev-clean into $storage_dir"
+  if ! test -e $storage_dir/Nonspeech; then
+       echo "Downloading Noises into $storage_dir"
 	  wget -c --tries=0 --read-timeout=20 http://web.cse.ohio-state.edu/pnl/corpus/HuNonspeech/Nonspeech.zip -P $storage_dir
-	  unzip $storage_dir/Nonspeech.zip -C $storage_dir
+	  unzip $storage_dir/Nonspeech.zip -d $storage_dir
 	  rm -rf $storage_dir/Nonspeech.zip
-	fi
+  fi
 
 fi
 
-
 if [[ $stage -le  1 ]]; then
   echo "Stage 1: Creating Synthetic Datasets"
-  $python_path create_dataset.py \
-                --output-path=$storage_dir \
-                --dataset=$dataset_type \
-                --libri-path=$librispeech_dir \
-                --noise-path=$noise_dir
+  $python_path local/create_dataset.py \
+                --output-path=$(readlink -m $storage_dir) \
+		--dataset=$dataset_type \
+		--libri-path=$(readlink -m $librispeech_dir) \
+		--noise-path=$(readlink -m $noise_dir)
+fi
 
+if [[ $stage -le 2 ]]; then
+  echo "Parsing dataset to json to speed up subsequent experiments"
+  for split in train dev test; do
+  $python_path local/parse_data --in_dir $storage_dir/$split --out_dir $dumpdir/$split
 
-
+  done
+fi
 
 # Generate a random ID for the run if no tag is specified
 uuid=$($python_path -c 'import uuid, sys; print(str(uuid.uuid4())[:8])')
@@ -90,7 +95,7 @@ expdir=exp/train_TAC_${tag}
 mkdir -p $expdir && echo $uuid >> $expdir/run_uuid.txt
 echo "Results from the following experiment will be stored in $expdir"
 
-if [[ $stage -le 2 ]]; then
+if [[ $stage -le 3 ]]; then
   echo "Stage 3: Training"
   mkdir -p logs
   CUDA_VISIBLE_DEVICES=$id $python_path train.py \
@@ -104,5 +109,5 @@ if [[ $stage -le 2 ]]; then
 
 	# Get ready to publish
 	mkdir -p $expdir/publish_dir
-	echo "DeMask" > $expdir/publish_dir/recipe_name.txt
+	echo "TAC" > $expdir/publish_dir/recipe_name.txt
 fi
