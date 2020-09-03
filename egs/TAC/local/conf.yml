@@ -1,0 +1,27 @@
+data:
+  samplerate: 16000
+  segment:
+  train_json: ./data/train.json
+  dev_json: ./data/dev.json
+net:
+  enc_dim: 64
+  feature_dim: 64
+  hidden_dim: 128
+  n_layers: 4
+  n_src: 2
+  win_len: 4
+  context_len: 16
+  sr: 16000
+optim:
+  lr: 0.001
+  weight_decay: !!float 1e-5
+training:
+  epochs: 200
+  batch_size: 2
+  gradient_clipping: 5
+  accumulate_batches: 1
+  save_top_k: 10
+  num_workers: 8
+  patience: 30
+  half_lr: true
+  early_stop: true

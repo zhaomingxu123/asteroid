@@ -5,7 +5,7 @@ set -e
 set -o pipefail
 
 # Main storage directory where dataset will be stored
-storage_dir=./datasets
+storage_dir=/media/sam/ee430d77-96af-4264-8a84-1e24f308bd27/TAC/adhoc/ #./datasets
 
 librispeech_dir=$storage_dir/LibriSpeech #$storage_dir/LibriSpeech
 noise_dir=$storage_dir/Nonspeech #$storage_dir/rir_data
@@ -80,9 +80,8 @@ fi
 
 if [[ $stage -le 2 ]]; then
   echo "Parsing dataset to json to speed up subsequent experiments"
-  for split in train dev test; do
-  $python_path local/parse_data --in_dir $storage_dir/$split --out_dir $dumpdir/$split
-
+  for split in train validation test; do
+  $python_path local/parse_data.py --in_dir $storage_dir/MC_Libri_${dataset_type}/$split --out_json $dumpdir/${split}.json
   done
 fi
 
@@ -99,11 +98,8 @@ if [[ $stage -le 3 ]]; then
   echo "Stage 3: Training"
   mkdir -p logs
   CUDA_VISIBLE_DEVICES=$id $python_path train.py \
-		--clean_speech_train $dumpdir/clean/train-clean-360.json \
-		--clean_speech_valid $dumpdir/clean/dev-clean.json \
-	  --rir_train $dumpdir/rirs/train.json \
-	  --rir_valid $dumpdir/rirs/validation.json \
-		--fs $sample_rate \
+		--train_json $dumpdir/train.json \
+		--dev_json $dumpdir/validation.json \
 		--exp_dir ${expdir}/ | tee logs/train_${tag}.log
 	cp logs/train_${tag}.log $expdir/train.log
 

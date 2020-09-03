@@ -20,7 +20,7 @@ def parse_dataset(in_dir, out_json):
             for wav in glob.glob(os.path.join(sample_dir, "*.wav")):
 
                 source_or_mix = Path(wav).stem.split("_")[0]
-                n_mic = int(re.findall("\d+", Path(wav).stem)[0])
+                n_mic = int(re.findall("\d+", Path(wav).stem.split("_")[-1])[0])
                 length = len(sf.SoundFile(wav))
 
                 if source_or_mix not in c_ex.keys():

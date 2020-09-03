@@ -153,7 +153,7 @@ def generate_data(output_path, dataset, libri_path, noise_path):
                 if not os.path.exists(this_save_dir):
                     os.makedirs(this_save_dir)
                 sf.write(
-                    os.path.join(this_save_dir, "spk1_mic" + str(mic + 1) + ".wav"),
+                    os.path.join(this_save_dir, "spk1_micf" + str(mic + 1) + ".wav"),
                     spk1_echoic_sig,
                     sr,
                 )
