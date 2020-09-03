@@ -5,6 +5,7 @@ import soundfile as sf
 import pickle
 import argparse
 import gpuRIR
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description="Generate multi-channel Librispeech data")
 parser.add_argument(
@@ -44,7 +45,11 @@ def generate_data(output_path, dataset, libri_path, noise_path):
     data_type = ["train", "validation", "test"]
     for i in range(len(data_type)):
         # path for config
-        config_path = os.path.join("configs", "MC_Libri_" + dataset + "_" + data_type[i] + ".pkl")
+        config_path = os.path.join(
+            Path(os.path.realpath(__file__)).parent,
+            "data_configs",
+            "MC_Libri_" + dataset + "_" + data_type[i] + ".pkl",
+        )
 
         # load pickle file
         with open(config_path, "rb") as f:

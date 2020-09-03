@@ -5,7 +5,7 @@ set -e
 set -o pipefail
 
 # Main storage directory where dataset will be stored
-storage_dir=/media/sam/ee430d77-96af-4264-8a84-1e24f308bd27/TAC/adhoc/ #./datasets
+storage_dir=./datasets
 
 librispeech_dir=$storage_dir/LibriSpeech #$storage_dir/LibriSpeech
 noise_dir=$storage_dir/Nonspeech #$storage_dir/rir_data
@@ -31,9 +31,10 @@ dataset_type=adhoc
 
 dumpdir=data/$suffix  # directory to put generated json file
 
-# Install pysndfx if not instaled
-if not python -c "import gpuRIR" &> /dev/null; then
+# check if gpuRIR installed
+if ! ( pip list | grep -F gpuRIR ); then
   echo 'This recipe requires gpuRIR. Please install gpuRIR.'
+  exit
 fi
 
 if [[ $stage -le  0 ]]; then
