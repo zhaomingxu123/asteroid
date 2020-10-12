@@ -520,8 +520,6 @@ class DCCRMaskNetRNN(nn.Module):
 
     def forward(self, x: complex_nn.ComplexTensor):
         """Input shape: [batch, ..., time]"""
-        # Remember x for skip connection
-        skip_conn = x
         # Permute to [batch, time, ...]
         x = x.permute(0, x.ndim - 1, *range(1, x.ndim - 1))
         # RNN + Linear expect [batch, time, rest]
@@ -530,7 +528,7 @@ class DCCRMaskNetRNN(nn.Module):
         x = x.permute(0, *range(2, x.ndim), 1)
         if self.norm is not None:
             x = self.norm(x)
-        return x + skip_conn
+        return x
 
 
 class DCCRMaskNet(BaseDCUMaskNet):
